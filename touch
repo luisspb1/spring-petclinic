@@ -1,0 +1,5 @@
+# /var/snap/microk8s/current/args/certs.d/<IP_SERVICIO_NEXUS>:8082/hosts.toml
+server = "10.152.183.56:8082"
+
+[host."http://10.152.183.56:8082"]
+capabilities = ["pull", "resolve"]
