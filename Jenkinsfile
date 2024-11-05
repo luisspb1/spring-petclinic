@@ -1,13 +1,11 @@
 #!/usr/bin/env groovy
-
 pipeline {
     agent { label 'pod-default' }
-
     stages {
         stage('Check Environment') {
             steps {
-                echo '01# Stage - Check Environment'
-                echo '(develop y main): Checking environment Java & Maven versions.'
+                println '01# Stage - Check Environment'
+                println '(develop y main):  Checking environment Java & Maven versions.'
                 sh 'java -version'
                 container('maven') {
                     sh '''
@@ -18,23 +16,21 @@ pipeline {
                 }
             }
         }
-
         stage('Build') {
             when {
                 anyOf {
                     branch 'main'
-                    // branch 'develop'
+                    branch 'develop'
                 }
             }
             steps {
                 container('maven') {
-                    echo '02# Stage - Build'
-                    echo '(develop y main): Build a jar file.'
+                    println '02# Stage - Build'
+                    println '(develop y main):  Build a jar file.'
                     sh './mvnw package -Dmaven.test.skip=true'
                 }
             }
         }
-
         stage('Unit Tests') {
             when {
                 anyOf {
@@ -44,14 +40,15 @@ pipeline {
             }
             steps {
                 container('maven') {
-                    echo '03# Stage - Unit Tests'
-                    echo '(develop y main): Launch unit tests.'
-                    sh 'mvn test'
+                    println '03# Stage - Unit Tests'
+                    println '(develop y main): Launch unit tests.'
+                    sh '''
+                        mvn test
+                    '''
                     junit '**/target/surefire-reports/*.xml'
                 }
             }
         }
-
         stage('Publish Artifact') {
             when {
                 anyOf {
@@ -61,8 +58,8 @@ pipeline {
             }
             steps {
                 container('maven') {
-                    echo '04# Stage - Deploy Artifact'
-                    echo '(develop y main): Deploy artifact to repository.'
+                    println '04# Stage - Deploy Artifact'
+                    println '(develop y main): Deploy artifact to repository.'
                     sh '''
                         mvn -e deploy:deploy-file \
                             -Durl=http://nexus-service:8081/repository/maven-snapshots \
@@ -75,7 +72,6 @@ pipeline {
                 }
             }
         }
-
         stage('Build & Publish Container Image') {
             when {
                 anyOf {
@@ -85,12 +81,20 @@ pipeline {
             }
             steps {
                 container('kaniko') {
-                    echo '05# Stage - Build & Publish Container Image'
-                    echo '(develop y main): Build container image with Kaniko & Publish to container registry.'
+                    println '05# Stage - Build & Publish Container Image'
+                    println '(develop y main): Build container image with Kaniko & Publish to container registry.'
+                    input 'Please wait...'
                     sh '''
                         /kaniko/executor \
                         --context `pwd` \
                         --insecure \
                         --dockerfile Dockerfile \
                         --destination=nexus-service:8082/repository/docker/spring-petclinic:3.3.0-SNAPSHOT \
-                        --destination=nexus-service:8082/repository/docker/spring-petclinic:latest
+                        --destination=nexus-service:8082/repository/docker/spring-petclinic:latest \
+                        --build-arg JAR_FILE=spring-petclinic-3.3.0-SNAPSHOT.jar
+                    '''
+                }
+            }
+        }
+    }
+}
